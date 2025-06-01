@@ -5,19 +5,25 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.homebudget.databinding.ActivityAddTransactionBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 class AddTransactionActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAddTransactionBinding
-    private val api = BudgetApi()
+    private lateinit var authManager: AuthManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityAddTransactionBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        authManager = AuthManager(this)
+
+        // Настройка Spinner
         ArrayAdapter.createFromResource(
             this,
             R.array.transaction_types,
@@ -28,32 +34,57 @@ class AddTransactionActivity : AppCompatActivity() {
         }
 
         binding.saveButton.setOnClickListener {
-            val title = binding.titleEditText.text.toString()
+            val name = binding.titleEditText.text.toString()
             val amountText = binding.amountEditText.text.toString()
-            val type = if (binding.typeSpinner.selectedItemPosition == 0) "income" else "expense"
+            val category = if (binding.typeSpinner.selectedItemPosition == 0) "in" else "out"
 
-            if (title.isEmpty() || amountText.isEmpty()) {
+            if (name.isEmpty() || amountText.isEmpty()) {
                 showToast("Заполните все поля")
                 return@setOnClickListener
             }
 
-            val amount = amountText.toDoubleOrNull() ?: run {
+            val amount = amountText.toIntOrNull() ?: run {
                 showToast("Введите корректную сумму")
                 return@setOnClickListener
             }
 
-            val transaction = Transaction(
-                title = title,
-                amount = amount,
-                type = type,
-                date = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
-            )
+            createOperation(name, category, amount)
+        }
+    }
 
-            if (api.addTransaction(transaction)) {
-                showToast("Транзакция добавлена")
-                finish()
-            } else {
-                showToast("Ошибка сохранения")
+    private fun createOperation(name: String, category: String, sum: Int) {
+        val token = authManager.getToken() ?: run {
+            showToast("Требуется авторизация")
+            finish()
+            return
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = CreateOperationRequest(
+                    name = name,
+                    category = category,
+                    sum = sum,
+                    user_id = 1 // Замените на реальный ID пользователя
+                )
+
+                val response = NetworkClient.apiService.createOperation(
+                    "Bearer $token",
+                    request
+                )
+
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        showToast("Операция добавлена (ID: ${response.body()?.id})")
+                        finish()
+                    } else {
+                        showToast("Ошибка: ${response.message()}")
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast("Ошибка сети: ${e.message}")
+                }
             }
         }
     }

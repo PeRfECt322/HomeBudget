@@ -9,14 +9,16 @@
         android:id="@+id/titleEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Название"/>
+        android:hint="Название операции"
+        android:inputType="textCapSentences"/>
 
     <EditText
         android:id="@+id/amountEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Сумма"
-        android:inputType="numberDecimal"/>
+        android:inputType="numberDecimal"
+        android:layout_marginTop="8dp"/>
 
     <Spinner
         android:id="@+id/typeSpinner"
@@ -28,6 +30,6 @@
         android:id="@+id/saveButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Сохранить"/>
+        android:text="Сохранить"
+        android:layout_marginTop="16dp"/>
 </LinearLayout>

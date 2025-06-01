@@ -17,19 +17,21 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Пароль"
-        android:inputType="textPassword"/>
+        android:inputType="textPassword"
+        android:layout_marginTop="8dp"/>
 
     <EditText
         android:id="@+id/confirmPasswordEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Подтвердите пароль"
-        android:inputType="textPassword"/>
+        android:inputType="textPassword"
+        android:layout_marginTop="8dp"/>
 
     <Button
         android:id="@+id/registerButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Зарегистрироваться"/>
+        android:text="Зарегистрироваться"
+        android:layout_marginTop="16dp"/>
 </LinearLayout>
