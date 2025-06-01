@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">Домашний бюджет</string>
+
+    <!-- Логин -->
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Пароль</string>
+    <string name="login_button">Войти</string>
+    <string name="register_button">Регистрация</string>
+
+    <!-- Регистрация -->
+    <string name="confirm_password_hint">Подтвердите пароль</string>
+    <string name="register_title">Регистрация</string>
+
+    <!-- Транзакции -->
+    <string name="add_transaction">Добавить транзакцию</string>
+    <string-array name="transaction_types">
+        <item>Доход</item>
+        <item>Расход</item>
+    </string-array>
+</resources>
