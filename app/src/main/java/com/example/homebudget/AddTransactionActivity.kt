@@ -1,7 +1,7 @@
 package com.example.homebudget
 
-import android.content.Intent
 import android.os.Bundle
+import android.util.Base64
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -10,6 +10,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.*
 
 class AddTransactionActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAddTransactionBinding
@@ -21,11 +24,8 @@ class AddTransactionActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         authManager = AuthManager(this)
-        setupSpinner()
-        setupSaveButton()
-    }
 
-    private fun setupSpinner() {
+        // Настройка Spinner
         ArrayAdapter.createFromResource(
             this,
             R.array.transaction_types,
@@ -34,58 +34,63 @@ class AddTransactionActivity : AppCompatActivity() {
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             binding.typeSpinner.adapter = adapter
         }
-    }
 
-    private fun setupSaveButton() {
         binding.saveButton.setOnClickListener {
-            val name = binding.titleEditText.text.toString().trim()
-            val amountText = binding.amountEditText.text.toString().trim()
+            val name = binding.titleEditText.text.toString()
+            val amountText = binding.amountEditText.text.toString()
             val category = if (binding.typeSpinner.selectedItemPosition == 0) "in" else "out"
 
-            when {
-                name.isEmpty() -> showToast("Введите название")
-                amountText.isEmpty() -> showToast("Введите сумму")
-                else -> {
-                    val amount = amountText.toIntOrNull() ?: run {
-                        showToast("Некорректная сумма")
-                        return@setOnClickListener
-                    }
-                    createOperation(name, category, amount)
-                }
+            if (name.isEmpty() || amountText.isEmpty()) {
+                showToast("Заполните все поля")
+                return@setOnClickListener
             }
+
+            val amount = amountText.toIntOrNull() ?: run {
+                showToast("Введите корректную сумму")
+                return@setOnClickListener
+            }
+
+            createOperation(name, category, amount)
         }
     }
 
     private fun createOperation(name: String, category: String, sum: Int) {
         val token = authManager.getToken() ?: run {
-            showToastAndFinish("Требуется авторизация")
+            showToast("Требуется авторизация")
+            finish()
             return
         }
-
-        val userId = authManager.getUserId()
-        if (userId == -1) {
-            showToastAndFinish("Ошибка: ID пользователя не найден")
-            return
-        }
-
+        val parts = token.split(".")
+        val payload = parts[1]
+        val decodedBytes = Base64.decode(payload, Base64.URL_SAFE or Base64.NO_WRAP)
+        val payloadJson = JSONObject(String(decodedBytes))
+        val username = payloadJson.optString("username", null)
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val uId = NetworkClient.apiService.getUserId(GetUserId(username))
+                val request = CreateOperationRequest(
+                    name = name,
+                    category = category,
+                    sum = sum,
+                    user_id = uId.body() ?: 0
+                )
+
                 val response = NetworkClient.apiService.createOperation(
                     "Bearer $token",
-                    CreateOperationRequest(name, category, sum, userId)
+                    request
                 )
 
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
-                        setResult(RESULT_OK)
+                        showToast("Операция добавлена (ID: ${response.body()?.id})")
                         finish()
                     } else {
-                        showToast("Ошибка: ${response.errorBody()?.string()}")
+                        showToast("Ошибка: ${response.message()}")
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    showToast("Ошибка сети: ${e.localizedMessage}")
+                    showToast("Ошибка сети: ${e.message}")
                 }
             }
         }
@@ -93,10 +98,5 @@ class AddTransactionActivity : AppCompatActivity() {
 
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun showToastAndFinish(message: String) {
-        showToast(message)
-        finish()
     }
 }

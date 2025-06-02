@@ -3,7 +3,6 @@ package com.example.homebudget
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.homebudget.databinding.ActivityMainBinding
@@ -11,23 +10,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
+import android.util.Base64
+import kotlin.math.log
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var authManager: AuthManager
     private lateinit var adapter: OperationsAdapter
-    private var selectedPeriodDays = 30 // По умолчанию месяц
-
-    // Для обновления после добавления операции
-    private val addOperationResult = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            loadOperations()
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,39 +28,19 @@ class MainActivity : AppCompatActivity() {
 
         authManager = AuthManager(this)
         setupRecyclerView()
-        setupPeriodButtons()
         loadOperations()
 
         binding.addButton.setOnClickListener {
-            addOperationResult.launch(Intent(this, AddTransactionActivity::class.java))
+            startActivity(Intent(this, AddTransactionActivity::class.java))
         }
     }
 
     private fun setupRecyclerView() {
-        adapter = OperationsAdapter { operation ->
-            // Обработка клика по операции (если нужно)
-            showToast("Выбрана операция: ${operation.name}")
-        }
+        adapter = OperationsAdapter()
         binding.operationsRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = this@MainActivity.adapter
         }
-    }
-
-    private fun setupPeriodButtons() {
-        binding.apply {
-            periodDay.setOnClickListener { setPeriod(1) }
-            periodWeek.setOnClickListener { setPeriod(7) }
-            periodMonth.setOnClickListener { setPeriod(30) }
-            periodYear.setOnClickListener { setPeriod(365) }
-            periodAll.setOnClickListener { setPeriod(0) }
-        }
-    }
-
-    private fun setPeriod(days: Int) {
-        selectedPeriodDays = days
-        loadOperations()
-        updatePeriodTitle()
     }
 
     private fun loadOperations() {
@@ -76,69 +48,54 @@ class MainActivity : AppCompatActivity() {
             showToastAndFinish("Требуется авторизация")
             return
         }
-
-        val userId = authManager.getUserId()
-        if (userId == -1) {
-            showToastAndFinish("Ошибка: ID пользователя не найден")
-            return
-        }
-
+        val parts = token.split(".")
+        val payload = parts[1]
+        val decodedBytes = Base64.decode(payload, Base64.URL_SAFE or Base64.NO_WRAP)
+        val payloadJson = JSONObject(String(decodedBytes))
+        val username = payloadJson.optString("username", null)
         val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        val endDate = Date()
-        val startDate = when (selectedPeriodDays) {
-            0 -> Date(0) // Все операции
-            else -> Calendar.getInstance().apply {
-                add(Calendar.DAY_OF_YEAR, -selectedPeriodDays)
-            }.time
-        }
+        val endDate = Calendar.getInstance().apply {
+            add(Calendar.MONTH, +1)
+        }.time
+        val startDate = Calendar.getInstance().apply {
+            add(Calendar.MONTH, -1)
+        }.time
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val uId = NetworkClient.apiService.getUserId(GetUserId(username))
                 val response = NetworkClient.apiService.getOperations(
                     token = "Bearer $token",
-                    start = dateFormat.format(startDate),
-                    end = dateFormat.format(endDate),
-                    userId = userId
+                    GetRequest(
+                        start = dateFormat.format(startDate),
+                        end = dateFormat.format(endDate),
+                        user_id = uId.body() ?: 0
+                        //Заменить на реальный айдишник
+                    )
                 )
 
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         response.body()?.operations?.let { operations ->
-                            adapter.submitList(operations)
+                            adapter.updateOperations(operations)
                             updateBalance(operations)
                         }
                     } else {
-                        showToast("Ошибка загрузки: ${response.errorBody()?.string()}")
-                        if (response.code() == 401) {
-                            authManager.clearAuth()
-                            startActivity(Intent(this@MainActivity, LoginActivity::class.java))
-                            finish()
-                        }
+                        showToast("Ошибка загрузки данных")
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    showToast("Ошибка сети: ${e.localizedMessage}")
+                    showToast("Ошибка сети: ${e.message}")
                 }
             }
         }
     }
 
-    private fun updatePeriodTitle() {
-        binding.periodTitle.text = when (selectedPeriodDays) {
-            1 -> "За сегодня"
-            7 -> "За неделю"
-            30 -> "За месяц"
-            365 -> "За год"
-            0 -> "Все операции"
-            else -> "Операции"
-        }
-    }
-
     private fun updateBalance(operations: List<Operation>) {
-        val (income, expense) = operations.partition { it.category == "in" }
-        val balance = income.sumOf { it.sum } - expense.sumOf { it.sum }
-        binding.balanceTextView.text = "Баланс: ${balance} ₽"
+        val income = operations.filter { it.Category == "in" }.sumOf { it.Sum }
+        val expense = operations.filter { it.Category == "out" }.sumOf { it.Sum }
+        binding.balanceTextView.text = "Баланс: ${income - expense} ₽"
     }
 
     private fun showToast(message: String) {

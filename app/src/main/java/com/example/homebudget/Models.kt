@@ -1,21 +1,17 @@
 package com.example.homebudget
-
-import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.POST
-
 // Модели для запросов и ответов
 data class LoginRequest(val username: String, val password: String)
 
 data class OperationsResponse(val operations: List<Operation>)
 
-data class LoginResponse(
-    @SerializedName("token") val token: String,
-    @SerializedName("userId") val userId: Int,
-    @SerializedName("username") val username: String? = null
+data class Operation(
+    val Id: Int,
+    val Name: String,
+    val Date: String,
+    val UserId: Int,
+    val Category: String,
+    val Sum: Int
 )
-
-
 
 data class CreateOperationRequest(
     val name: String,
@@ -30,25 +26,13 @@ data class RegisterRequest(
     val password: String
 )
 
-data class LoginResponse(
-    val token: String,
-    val userId: Int,
-    val username: String
-)
-data class Operation(
-    val id: Int,
-    val name: String,
-    val date: String,
-    val category: String, // "in" или "out"
-    val sum: Int
+data class GetRequest(
+    val start: String,
+    val end: String,
+    val user_id: Int
 )
 
-data class OperationsResponse(
-    val operations: List<Operation>
+data class GetUserId(
+    val username: String,
 )
-interface ApiService {
-    @POST("auth/login")
-    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
-}
-
 data class CreateOperationResponse(val id: Int)

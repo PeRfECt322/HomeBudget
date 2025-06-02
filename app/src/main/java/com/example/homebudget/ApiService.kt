@@ -4,32 +4,25 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface ApiService {
-    // Авторизация
-    @POST("auth/login")
-    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+    @POST("login")
+    suspend fun login(@Body request: LoginRequest): Response<String> // Получаем JWT токен
+    @POST("register") // Уточните endpoint для регистрации
+    suspend fun register(@Body request: RegisterRequest): Response<String>
 
-    // Регистрация
-    @POST("auth/register")
-    suspend fun register(@Body request: RegisterRequest): Response<LoginResponse>
-
-    // Операции
-    @GET("operations")
+    @POST("getAllOperations")
     suspend fun getOperations(
         @Header("Authorization") token: String,
-        @Query("start") start: String,
-        @Query("end") end: String,
-        @Query("userId") userId: Int
+        @Body request: GetRequest
     ): Response<OperationsResponse>
 
-    @POST("operations")
+    @POST("user")
+    suspend fun getUserId(
+        @Body request: GetUserId
+    ): Response<Int>
+
+    @POST("createOperation")
     suspend fun createOperation(
         @Header("Authorization") token: String,
         @Body request: CreateOperationRequest
     ): Response<CreateOperationResponse>
-
-    @DELETE("operations/{id}")
-    suspend fun deleteOperation(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<Unit>
 }
