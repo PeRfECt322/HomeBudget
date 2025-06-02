@@ -6,6 +6,8 @@ import retrofit2.http.*
 interface ApiService {
     @POST("login")
     suspend fun login(@Body request: LoginRequest): Response<String> // Получаем JWT токен
+    @POST("register") // Уточните endpoint для регистрации
+    suspend fun register(@Body request: RegisterRequest): Response<String>
 
     @GET("getAllOperations")
     suspend fun getOperations(

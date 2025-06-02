@@ -19,5 +19,11 @@ data class CreateOperationRequest(
     val sum: Int,
     val user_id: Int
 )
+// Добавьте в файл с моделями (или создайте новый)
+data class RegisterRequest(
+    val username: String,
+    val email: String, // если требуется email
+    val password: String
+)
 
 data class CreateOperationResponse(val id: Int)
