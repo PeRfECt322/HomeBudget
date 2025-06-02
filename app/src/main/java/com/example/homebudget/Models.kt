@@ -1,8 +1,8 @@
 package com.example.homebudget
-// Модели для запросов и ответов
+
 data class LoginRequest(val username: String, val password: String)
 
-data class OperationsResponse(val operations: List<Operation>)
+data class OperationsResponse(val operations: List<Operation> = emptyList())
 
 data class Operation(
     val Id: Int,
@@ -19,10 +19,10 @@ data class CreateOperationRequest(
     val sum: Int,
     val user_id: Int
 )
-// Добавьте в файл с моделями (или создайте новый)
+
 data class RegisterRequest(
     val username: String,
-    val email: String, // если требуется email
+    val email: String,
     val password: String
 )
 
@@ -35,4 +35,5 @@ data class GetRequest(
 data class GetUserId(
     val username: String,
 )
+
 data class CreateOperationResponse(val id: Int)

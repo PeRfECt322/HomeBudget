@@ -15,14 +15,13 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 import android.util.Base64
-import kotlin.math.log
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var authManager: AuthManager
     private lateinit var adapter: OperationsAdapter
     private var startDate: Date = Calendar.getInstance().apply { add(Calendar.MONTH, -1) }.time
-    private var endDate: Date = Calendar.getInstance().apply { add(Calendar.MONTH, +1) }.time
+    private var endDate: Date = Calendar.getInstance().time
     private val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
     private val apiDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
 
@@ -80,7 +79,6 @@ class MainActivity : AppCompatActivity() {
                     endDate = newDate
                 }
 
-                // Проверка, чтобы начальная дата не была позже конечной
                 if (startDate.after(endDate)) {
                     if (isStartDate) {
                         endDate = startDate
@@ -132,16 +130,26 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         response.body()?.operations?.let { operations ->
-                            adapter.updateOperations(operations)
-                            updateBalance(operations)
+                            if (operations.isEmpty()) {
+                                showToast("Нет операций за выбранный период")
+                                adapter.updateOperations(emptyList())
+                                binding.balanceTextView.text = "Нет данных за период ${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}"
+                            } else {
+                                adapter.updateOperations(operations)
+                                updateBalance(operations)
+                            }
                         }
                     } else {
                         showToast("Ошибка загрузки данных")
+                        adapter.updateOperations(emptyList())
+                        binding.balanceTextView.text = "Ошибка загрузки данных"
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     showToast("Ошибка сети: ${e.message}")
+                    adapter.updateOperations(emptyList())
+                    binding.balanceTextView.text = "Ошибка сети"
                 }
             }
         }
