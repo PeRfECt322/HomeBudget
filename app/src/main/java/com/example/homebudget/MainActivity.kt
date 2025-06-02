@@ -14,9 +14,11 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var authManager: AuthManager
     private lateinit var adapter: OperationsAdapter
+    private var selectedPeriodDays = 30 // По умолчанию показываем за 30 дней
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,6 +27,7 @@ class MainActivity : AppCompatActivity() {
 
         authManager = AuthManager(this)
         setupRecyclerView()
+        setupPeriodButtons()
         loadOperations()
 
         binding.addButton.setOnClickListener {
@@ -40,17 +43,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupPeriodButtons() {
+        binding.periodDay.setOnClickListener { setPeriod(1) }
+        binding.periodWeek.setOnClickListener { setPeriod(7) }
+        binding.periodMonth.setOnClickListener { setPeriod(30) }
+        binding.periodYear.setOnClickListener { setPeriod(365) }
+        binding.periodAll.setOnClickListener { setPeriod(0) } // 0 = все данные
+    }
+
+    private fun setPeriod(days: Int) {
+        selectedPeriodDays = days
+        loadOperations()
+    }
+
     private fun loadOperations() {
         val token = authManager.getToken() ?: run {
             showToastAndFinish("Требуется авторизация")
             return
         }
 
+        val userId = authManager.getUserId() ?: run {
+            showToastAndFinish("ID пользователя не найдено")
+            return
+        }
+
         val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
         val endDate = Date()
-        val startDate = Calendar.getInstance().apply {
-            add(Calendar.MONTH, -1)
-        }.time
+        val startDate = if (selectedPeriodDays > 0) {
+            Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -selectedPeriodDays) }.time
+        } else {
+            // Если выбран период "Все", используем очень старую дату
+            Calendar.getInstance().apply { set(1970, 0, 1) }.time
+        }
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -58,7 +82,7 @@ class MainActivity : AppCompatActivity() {
                     token = "Bearer $token",
                     start = dateFormat.format(startDate),
                     end = dateFormat.format(endDate),
-                    userId = 1 // Замените на реальный ID пользователя
+                    userId = userId
                 )
 
                 withContext(Dispatchers.Main) {
@@ -66,9 +90,10 @@ class MainActivity : AppCompatActivity() {
                         response.body()?.operations?.let { operations ->
                             adapter.updateOperations(operations)
                             updateBalance(operations)
+                            updatePeriodTitle()
                         }
                     } else {
-                        showToast("Ошибка загрузки данных")
+                        showToast("Ошибка загрузки данных: ${response.message()}")
                     }
                 }
             } catch (e: Exception) {
@@ -77,6 +102,18 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun updatePeriodTitle() {
+        val title = when (selectedPeriodDays) {
+            1 -> "За сегодня"
+            7 -> "За неделю"
+            30 -> "За месяц"
+            365 -> "За год"
+            0 -> "Все операции"
+            else -> "Операции"
+        }
+        binding.periodTitle.text = title
     }
 
     private fun updateBalance(operations: List<Operation>) {

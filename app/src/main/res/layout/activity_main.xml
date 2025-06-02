@@ -28,4 +28,52 @@
         android:layout_margin="16dp"
         android:text="+"
         android:textSize="24sp"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_margin="8dp">
+
+        <Button
+            android:id="@+id/periodDay"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="День"/>
+
+        <Button
+            android:id="@+id/periodWeek"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Неделя"/>
+
+        <Button
+            android:id="@+id/periodMonth"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Месяц"/>
+
+        <Button
+            android:id="@+id/periodYear"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Год"/>
+
+        <Button
+            android:id="@+id/periodAll"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Все"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/periodTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:textStyle="bold"/>
 </RelativeLayout>
